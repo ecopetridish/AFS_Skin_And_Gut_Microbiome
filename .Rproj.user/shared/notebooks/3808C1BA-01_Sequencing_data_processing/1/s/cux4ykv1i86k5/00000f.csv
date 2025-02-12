@@ -1,8 +1,0 @@
-"0","# Fix asv and taxa tables"
-"0","asv<-asv %>% dplyr::mutate_if(is.integer, as.numeric)"
-"0","asv[,1]<-paste0(""ASV_"",seq(1:nrow(asv)))"
-"0","names(asv)[2:ncol(asv)]<-paste0(""S"",seq(1:(ncol(asv)-1)))"
-"0","asv<-asv %>% dplyr::rename(""ASV""=""X"")"
-"0",""
-"0","taxa[,1]<-paste0(""ASV_"",seq(1:nrow(taxa)))"
-"0","taxa<-taxa %>% dplyr::rename(""ASV""=""X"")"

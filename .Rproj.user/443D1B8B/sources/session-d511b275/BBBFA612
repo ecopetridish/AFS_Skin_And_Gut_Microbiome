@@ -3,7 +3,7 @@
     "path": "C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts/01_Sequencing_data_processing.Rmd",
     "project_path": "scripts/01_Sequencing_data_processing.Rmd",
     "type": "r_markdown",
-    "hash": "1338915422",
+    "hash": "2826384360",
     "contents": "",
     "dirty": false,
     "created": 1739185295729.0,
@@ -12,8 +12,8 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "279,0",
-        "scrollLine": "277",
+        "cursorPosition": "568,23",
+        "scrollLine": "557",
         "rmdVisualMode": "false",
         "rmdVisualWrapConfigured": "true",
         "docOutlineVisible": "1",
@@ -22,11 +22,11 @@
         "working_dir": "project"
     },
     "folds": "",
-    "lastKnownWriteTime": 1739367773,
+    "lastKnownWriteTime": 1739376492,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1739367773903,
+    "last_content_update": 1739376492472,
     "read_only": false,
     "read_only_alternatives": []
 }

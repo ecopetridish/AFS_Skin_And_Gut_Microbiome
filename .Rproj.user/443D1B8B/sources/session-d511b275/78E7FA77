@@ -3,7 +3,7 @@
     "path": "C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts/02_Composition.Rmd",
     "project_path": "scripts/02_Composition.Rmd",
     "type": "r_markdown",
-    "hash": "4139061140",
+    "hash": "0",
     "contents": "",
     "dirty": false,
     "created": 1739285720675.0,
@@ -12,17 +12,17 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "105,2",
-        "scrollLine": "98",
+        "cursorPosition": "14,21",
+        "scrollLine": "0",
         "working_dir": "project",
         "docOutlineVisible": "1"
     },
     "folds": "",
-    "lastKnownWriteTime": 1739365941,
+    "lastKnownWriteTime": 1739373897,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1739365941201,
+    "last_content_update": 1739373897460,
     "read_only": false,
     "read_only_alternatives": []
 }

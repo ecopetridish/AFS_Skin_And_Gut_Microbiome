@@ -12,17 +12,17 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "171,11",
-        "scrollLine": "159",
+        "cursorPosition": "8,3",
+        "scrollLine": "0",
         "working_dir": "project",
         "docOutlineVisible": "1"
     },
     "folds": "",
-    "lastKnownWriteTime": 1739365353,
+    "lastKnownWriteTime": 1739373912,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1739365354018,
+    "last_content_update": 1739373912714,
     "read_only": false,
     "read_only_alternatives": []
 }

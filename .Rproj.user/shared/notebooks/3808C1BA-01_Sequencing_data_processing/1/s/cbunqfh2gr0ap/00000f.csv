@@ -1,8 +1,0 @@
-"0","# Identify contaminators"
-"0","## Skin"
-"0","contamdf.prev_skin<-isContaminant(ps0s_ec, method=""prevalence"", neg=""is.neg"","
-"0","                                 threshold = 0.1) #default"
-"0",""
-"0","## Gut"
-"0","contamdf.prev_gut<-isContaminant(ps0g_ec, method=""prevalence"", neg=""is.neg"","
-"0","                                 threshold = 0.1) #default"

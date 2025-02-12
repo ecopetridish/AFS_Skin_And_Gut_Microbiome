@@ -1,4 +1,0 @@
-"0","# Load phyloseq objects"
-"0","ps1_s<-readRDS(""data/ps1_s.rds"")"
-"0","ps1_g<-readRDS(""data/ps1_g.rds"")"
-"0","ps1_s_g<-readRDS(""data/ps1_s_g.rds"")"

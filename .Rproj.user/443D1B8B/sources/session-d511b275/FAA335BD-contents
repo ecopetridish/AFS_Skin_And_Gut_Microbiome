@@ -19,7 +19,7 @@ output:
 <br>
 ```{r, echo = FALSE}
 setwd("C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts")
-knitr::include_graphics("../out/Figure_S1_rarefuction_curves_skin_gut.png")
+knitr::include_graphics("../out/Figure_S1_rarefaction_curves_skin_gut.png")
 ```
 <br><br>
 

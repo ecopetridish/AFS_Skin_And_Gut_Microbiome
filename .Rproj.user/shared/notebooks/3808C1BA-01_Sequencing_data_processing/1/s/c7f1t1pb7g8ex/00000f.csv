@@ -1,3 +1,0 @@
-"0","# Create subsets for each body site"
-"0","ps0s_ec<-merge_phyloseq(ps0_ec, ps0_s)"
-"0","ps0g_ec<-merge_phyloseq(ps0_ec, ps0_g) "
