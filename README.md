@@ -1,2 +1,2 @@
-Data and scripts for Antarctic fur seals (Arctocephalus gazella) skin and gut microbiome project
+Data and scripts for Antarctic fur seal (Arctocephalus gazella) skin and gut microbiome project
 
