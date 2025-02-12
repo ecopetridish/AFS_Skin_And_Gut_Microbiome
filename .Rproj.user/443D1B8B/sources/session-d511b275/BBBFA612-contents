@@ -1,0 +1,593 @@
+---
+title:  "A) Sequencing data processing"
+output: 
+  html_document:
+    theme: flatly
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+
+```{r, results='hide', error=FALSE}
+# Set output directory
+output_dir<-"out"
+
+# Load functions
+source("scripts/Functions.R")
+```
+
+# 01. Galaxy platform
+
+We analyzed the raw sequencing data on Galaxy platform (www.galaxy.org), by setting the following parameters:
+
+-   trim reads forward/reverse: 20
+
+-   truncate reads forward/reverse: 0
+
+-   expected error forward: 3 / reverse: 4
+
+-   pool samples: pseudo pooling
+
+# 02. Data cleaning
+
+## a) Import sequences in R
+
+```{r, results='hide', message=FALSE, error=FALSE, warning=FALSE}
+# Load packages
+library(kableExtra)
+library(tidyverse)
+library(phyloseq)
+library(viridis) #for ggplot - colour blind friendly
+library(vegan) #for rarefaction curves, etc
+library(scales) 
+library(decontam)
+library(patchwork)
+```
+
+```{r, results='hide'}
+# Load datasets
+asv<-read.csv("data/asv.csv",header = T)
+taxa<-read.csv("data/taxa.csv",header=T) 
+meta<-read.csv("data/meta.csv",header=T)
+```
+
+```{r, results='hide'}
+# Fix asv and taxa tables
+asv<-asv %>% dplyr::mutate_if(is.integer, as.numeric)
+asv[,1]<-paste0("ASV_",seq(1:nrow(asv)))
+names(asv)[2:ncol(asv)]<-paste0("S",seq(1:(ncol(asv)-1)))
+asv<-asv %>% dplyr::rename("ASV"="X")
+
+taxa[,1]<-paste0("ASV_",seq(1:nrow(taxa)))
+taxa<-taxa %>% dplyr::rename("ASV"="X")
+```
+
+## b) Create phyloseq objects
+
+```{r, results='hide'}
+# Create subsets
+## Skin
+asv_s<-asv[,c(1:21,42:61)]
+meta_s<-meta[meta$Type_2=="Skin",]
+
+## Gut
+asv_g<-asv[,c(1,22:41,62:81)]
+meta_g<-meta[meta$Type_2=="Gut",]
+
+## Environmental controls
+asv_ec<-asv[,c(1,82:ncol(asv))]
+meta_ec<-meta[meta$Type_2=="Control",]
+```
+
+```{r, results='hide'}
+# Row names (needed for phyloseq object)
+asv_s<-asv_s %>% tibble::column_to_rownames("ASV")
+asv_g<-asv_g %>% tibble::column_to_rownames("ASV")
+asv_ec<-asv_ec %>% tibble::column_to_rownames("ASV")
+
+taxa<-taxa %>% tibble::column_to_rownames("ASV")
+
+rownames(meta_s)<-meta_s[,1]
+saveRDS(meta_s, "data/meta_s.rds")
+
+rownames(meta_g)<-meta_g[,1] 
+saveRDS(meta_g, "data/meta_g.rds")
+
+rownames(meta_ec)<-meta_ec[,1]
+```
+
+```{r, results='hide'}
+# Convert taxa to matrix (needed for phyloseq)
+taxa<-as.matrix(taxa)
+saveRDS(taxa, "data/taxa.rds")
+```
+
+```{r, results='hide'}
+# Create phyloseq objects
+## Skin
+asv_s.obj<-otu_table(asv_s, taxa_are_rows = T) 
+taxa_s.obj<-tax_table(taxa)
+meta_s.obj<-sample_data(meta_s)
+ps0_s<-phyloseq(asv_s.obj,taxa_s.obj,meta_s.obj)
+
+## Gut
+asv_g.obj<-otu_table(asv_g, taxa_are_rows = T) 
+taxa_g.obj<-tax_table(taxa)
+meta_g.obj<-sample_data(meta_g)
+ps0_g<-phyloseq(asv_g.obj,taxa_g.obj,meta_g.obj)
+
+## Environmental controls
+asv_ec.obj<-otu_table(asv_ec, taxa_are_rows = T) 
+taxa_ec.obj<-tax_table(taxa)
+samples_ec.obj<-sample_data(meta_ec)
+ps0_ec<-phyloseq(asv_ec.obj,taxa_ec.obj,samples_ec.obj)
+```
+
+```{r, results='hide'}
+# Remove ASVs that have no total reads
+## Skin
+ps0_s<-ps0_s %>% filter_taxa(function(x) sum(x)>0, TRUE)
+
+## Gut
+ps0_g<-ps0_g %>% filter_taxa(function(x) sum(x)>0, TRUE)
+
+## Environmental controls
+ps0_ec<-ps0_ec %>% filter_taxa(function(x) sum(x)>0, TRUE)
+```
+
+## c) Decontaminate
+
+```{r, results='hide'}
+# Create subsets for each body site
+ps0s_ec<-merge_phyloseq(ps0_ec, ps0_s)
+ps0g_ec<-merge_phyloseq(ps0_ec, ps0_g) 
+```
+
+```{r, results='hide'}
+# Create column with F or T if its a negative control or not
+## Skin
+sample_data(ps0s_ec)$is.neg<-sample_data(ps0s_ec)$Type_2 == "Control"  
+
+## Gut
+sample_data(ps0g_ec)$is.neg<-sample_data(ps0g_ec)$Type_2 == "Control" 
+```
+
+```{r, results='hide'}
+# Identify contaminators
+## Skin
+contamdf.prev_skin<-isContaminant(ps0s_ec, method="prevalence", neg="is.neg", threshold = 0.1) 
+
+## Gut
+contamdf.prev_gut<-isContaminant(ps0g_ec, method="prevalence", neg="is.neg", threshold = 0.1) 
+```
+
+```{r}
+# Make phyloseq object of presence-absence in negative controls and true samples
+## Skin
+ps.pa_skin<-transform_sample_counts(ps0s_ec, function(abund) 1*(abund>0))
+ps.pa.neg_skin<-prune_samples(sample_data(ps.pa_skin)$Type_2 == "Control", ps.pa_skin)
+ps.pa.pos_skin<-prune_samples(sample_data(ps.pa_skin)$Type_2 != "Control", ps.pa_skin)
+
+## Gut
+ps.pa_gut<-transform_sample_counts(ps0g_ec, function(abund) 1*(abund>0))
+ps.pa.neg_gut<-prune_samples(sample_data(ps.pa_gut)$Type_2 == "Control", ps.pa_gut)
+ps.pa.pos_gut<-prune_samples(sample_data(ps.pa_gut)$Type_2 != "Control", ps.pa_gut)
+```
+
+```{r,results='hide'}
+# Remove contaminants from the phyloseq objects (based on decontam)
+## Skin
+ps0_s_nocontam<-prune_taxa(!contamdf.prev_skin$contaminant, ps0s_ec) 
+ps0_s_nocontam<-subset_samples(ps0_s_nocontam, !Type_2=="Control")
+
+## Gut
+ps0_g_nocontam<-prune_taxa(!contamdf.prev_gut$contaminant, ps0g_ec) 
+ps0_g_nocontam<-subset_samples(ps0_g_nocontam, !Type_2=="Control")
+```
+
+## d) Further filtering
+
+### 01. Remove ASVs that have no total reads
+
+```{r, results='hide'}
+# Skin
+ps0_s<-ps0_s_nocontam %>% filter_taxa(function(x) sum(x)>0, TRUE)
+
+# Gut
+ps0_g<-ps0_g_nocontam %>% filter_taxa(function(x) sum(x)>0, TRUE)
+```
+
+### 02. Remove samples with low number of reads
+
+```{r, results='hide'}
+#find function plot_seq_depth, plot_reads_freq in functions script
+# Skin
+readsumsdf_s<-data.frame(nreads=sort(taxa_sums(ps0_s), decreasing = T), 
+                         sorted=1:ntaxa(ps0_s), type="ASVs") 
+ 
+samplesumdf_s<-sample_sums(ps0_s) %>% data.frame(sum = .) %>% tibble::rownames_to_column("Sample_ID")
+
+## plot sequencing depth
+plot_seq_depth(samplesumdf_s, "Skin") #none of the samples has less than 100000 reads
+
+## plot reads frequency
+plot_reads_freq(samplesumdf_s, "Skin") #nothing to remove
+
+
+# Gut
+readsumsdf_g<-data.frame(nreads=sort(taxa_sums(ps0_g), decreasing = T), 
+                         sorted=1:ntaxa(ps0_g), type="ASVs") 
+ 
+samplesumdf_g<-sample_sums(ps0_g) %>% data.frame(sum = .) %>% tibble::rownames_to_column("Sample_ID")
+ 
+plot_seq_depth(samplesumdf_g, "Gut") #none of the samples has less than 100000 reads
+plot_reads_freq(samplesumdf_g, "Gut") #nothing to remove
+ 
+```
+
+### 03. Remove ASVs that are Chloroplasts, Mitochondria, or have NA on phylum level
+
+```{r, results='hide'}
+# Skin
+ps_s<-ps0_s %>% subset_taxa(!is.na(phylum)) %>%
+      subset_taxa(family != "Mitochondria" & class  != "Chloroplast")
+
+# Gut
+ps_g<-ps0_g %>% subset_taxa(!is.na(phylum)) %>%
+      subset_taxa(family != "Mitochondria" & class  != "Chloroplast")
+```
+
+### 04. Remove singletons (ASVs present in only 1 sample)
+
+```{r, results='hide'}
+# Skin
+prev0_s<-apply(X = otu_table(ps_s),
+               MARGIN = 1, #1 on rows, 2 on columns
+               FUN = function(x){sum(x > 0)})
+
+prevdf_s<-data.frame(Prevalence = prev0_s,
+                     TotalAbundance = taxa_sums(ps_s),
+                     tax_table(ps_s))
+
+ps1_s<-prune_taxa((prevdf_s$Prevalence >= 2), ps_s) 
+
+# Gut
+prev0_g<-apply(X = otu_table(ps_g),
+               MARGIN = 1, #1 on rows, 2 on columns
+               FUN = function(x){sum(x > 0)}) 
+
+prevdf_g<-data.frame(Prevalence = prev0_g,
+                     TotalAbundance = taxa_sums(ps_g),
+                     tax_table(ps_g))
+ps1_g<-prune_taxa((prevdf_g$Prevalence >= 2), ps_g) 
+```
+
+### 05. Merge and save phyloseq objects
+
+```{r, results='hide'}
+# Merge phyloseq objects
+ps0_s_g<-merge_phyloseq(ps0_s,ps0_g) #before filtering
+ps1_s_g<-merge_phyloseq(ps1_s,ps1_g) #after filtering
+```
+
+```{r}
+# Save phyloseq objects 
+saveRDS(ps1_s, "data/ps1_s.rds")
+saveRDS(ps1_g, "data/ps1_g.rds")
+saveRDS(ps1_s_g, "data/ps1_s_g.rds")
+```
+
+
+## e) Create statistics tables
+
+### 01. Reads and ASVs per sample before filtering
+
+```{r}
+# Skin
+samplesumdf_s_before<-samplesumdf_s %>% rename(Sum_reads = sum)
+
+ASVs<-ps0_s %>% psmelt() %>% filter(Abundance!=0) %>% group_by(Sample_ID) %>%
+      summarise(ASVs = length(unique(OTU)))
+
+samplesumdf_s_before<-merge(samplesumdf_s_before,ASVs, by = "Sample_ID")
+
+samplesumdf_s_before %>% 
+  kbl(caption = "Sample sums before filtering (Skin)") %>% 
+  kable_classic(full_width = F, html_font = "Cambria") 
+```
+
+
+```{r}
+# Gut
+samplesumdf_g_before<-samplesumdf_g %>% rename(Sum_reads = sum)
+
+ASVs<-ps0_g %>% psmelt() %>% filter(Abundance!=0) %>% group_by(Sample_ID) %>%
+  summarise(ASVs = length(unique(OTU)))
+
+samplesumdf_g_before<-merge(samplesumdf_g_before,ASVs, by = "Sample_ID")
+
+samplesumdf_g_before %>%
+  kbl(caption = "Sample sums before filtering (Gut)") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+```{r}
+# Skin and gut
+samplesumdf_s_g_before<-rbind(samplesumdf_s_before,samplesumdf_g_before)
+
+sample_order<-paste0("S",1:80)
+
+samplesumdf_s_g_before<-samplesumdf_s_g_before %>% 
+  mutate(Sample_ID=factor(Sample_ID, levels = sample_order))
+
+samplesumdf_s_g_before<-merge(samplesumdf_s_g_before, meta[!meta$Type_2=="Control",], by="Sample_ID")
+
+saveRDS(samplesumdf_s_g_before, "data/samplesumdf_s_g_before.rds")
+```
+
+### 02. Reads and ASVs per sample after filtering
+
+```{r}
+# Skin
+samplesumdf_s_after<-sample_sums(ps1_s) %>% data.frame(Sum_reads = .) %>% 
+                     tibble::rownames_to_column("Sample_ID")
+
+ASVs<-ps1_s %>% psmelt() %>% filter(Abundance!=0) %>% group_by(Sample_ID) %>%
+  summarise(ASVs = length(unique(OTU)))
+
+samplesumdf_s_after<-merge(samplesumdf_s_after,ASVs, by = "Sample_ID")
+
+samplesumdf_s_after %>%
+  kbl(caption = "Sample sums after filtering (Skin)") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+```{r}
+## Gut
+samplesumdf_g_after<-sample_sums(ps1_g) %>% data.frame(Sum_reads = .) %>% 
+                     tibble::rownames_to_column("Sample_ID")
+
+ASVs<-ps1_g %>% psmelt() %>% filter(Abundance!=0) %>%
+  group_by(Sample_ID) %>% summarise(ASVs = length(unique(OTU)))
+
+samplesumdf_g_after<-merge(samplesumdf_g_after, ASVs, by = "Sample_ID")
+
+samplesumdf_g_after %>%
+  kbl(caption = "Sample sums after filtering (Gut)") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+```{r}
+## Skin and gut
+samplesumdf_s_g_after<-rbind(samplesumdf_s_after,samplesumdf_g_after)
+
+samplesumdf_s_g_after<-samplesumdf_s_g_after %>%
+  mutate(Sample_ID=factor(Sample_ID, levels = sample_order))
+
+samplesumdf_s_g_after<-merge(samplesumdf_s_g_after, meta[!meta$Type_2=="Control",], by="Sample_ID")
+
+saveRDS(samplesumdf_s_g_after, "data/samplesumdf_s_g_after.rds")
+```
+
+
+### 03. Total reads and ASVs before filtering
+
+```{r}
+totalsums_before<-data.frame(Type=c("Skin & Gut", "Skin", "Gut"), 
+                             Total_reads=rep(NA,3),
+                             Mean_reads=rep(NA,3),
+                             SD_reads=rep(NA,3),
+                             Min_reads=rep(NA,3),
+                             Max_reads=rep(NA,3),
+                             Total_ASVs=rep(NA,3),
+                             Mean_ASVs=rep(NA,3),
+                             SD_ASVs=rep(NA,3), 
+                             Min_ASVs=rep(NA,3),
+                             Max_ASVs=rep(NA,3))
+
+# Total reads
+## Skin
+ps0_s_otu<-as.data.frame(ps0_s@otu_table) %>% mutate(Total=rowSums(.))
+totalsums_before$Total_reads[2]<-sum(ps0_s_otu$Total) 
+totalsums_before$Mean_reads[2]<-round(mean(samplesumdf_s_before$Sum_reads), digits = 2)
+totalsums_before$SD_reads[2]<-round(sd(samplesumdf_s_before$Sum_reads), digits = 2)
+totalsums_before$Min_reads[2]<-min(samplesumdf_s_before$Sum_reads)
+totalsums_before$Max_reads[2]<-max(samplesumdf_s_before$Sum_reads)
+
+## Gut
+ps0_g_otu<-as.data.frame(ps0_g@otu_table) %>% mutate(Total=rowSums(.))
+totalsums_before$Total_reads[3]<-sum(ps0_g_otu$Total) 
+totalsums_before$Mean_reads[3]<-round(mean(samplesumdf_g_before$Sum_reads), digits = 2)
+totalsums_before$SD_reads[3]<-round(sd(samplesumdf_g_before$Sum_reads), digits = 2)
+totalsums_before$Min_reads[3]<-min(samplesumdf_g_before$Sum_reads)
+totalsums_before$Max_reads[3]<-max(samplesumdf_g_before$Sum_reads)
+
+## Skin and gut
+ps0_s_g_otu<-as.data.frame(ps0_s_g@otu_table) %>% mutate(Total=rowSums(.))
+totalsums_before$Total_reads[1]<-sum(ps0_s_g_otu$Total)
+totalsums_before$Mean_reads[1]<-round(mean(samplesumdf_s_g_before$Sum_reads), digits = 2)
+totalsums_before$SD_reads[1]<-round(sd(samplesumdf_s_g_before$Sum_reads), digits = 2)
+totalsums_before$Min_reads[1]<-min(samplesumdf_s_g_before$Sum_reads)
+totalsums_before$Max_reads[1]<-max(samplesumdf_s_g_before$Sum_reads)
+
+# Total ASVs
+## Skin
+totalsums_before$Total_ASVs[2]<-ps0_s %>%
+  filter_taxa(function(x) sum(x)>0, TRUE) %>% taxa_names() %>% length() 
+totalsums_before$Mean_ASVs[2]<-round(mean(samplesumdf_s_before$ASVs), digits = 2)
+totalsums_before$SD_ASVs[2]<-round(sd(samplesumdf_s_before$ASVs), digits = 2)
+totalsums_before$Min_ASVs[2]<-min(samplesumdf_s_before$ASVs)
+totalsums_before$Max_ASVs[2]<-max(samplesumdf_s_before$ASVs)
+
+## Gut
+totalsums_before$Total_ASVs[3]<-ps0_g %>% 
+  filter_taxa(function(x) sum(x)>0, TRUE) %>% taxa_names() %>% length()
+totalsums_before$Mean_ASVs[3]<-round(mean(samplesumdf_g_before$ASVs), digits = 2)
+totalsums_before$SD_ASVs[3]<-round(sd(samplesumdf_g_before$ASVs), digits = 2)
+totalsums_before$Min_ASVs[3]<-min(samplesumdf_g_before$ASVs)
+totalsums_before$Max_ASVs[3]<-max(samplesumdf_g_before$ASVs)
+
+
+## Skin and gut
+totalsums_before$Total_ASVs[1]<-ps0_s_g %>%
+  filter_taxa(function(x) sum(x)>0, TRUE) %>% taxa_names() %>% length() 
+totalsums_before$Mean_ASVs[1]<-round(mean(samplesumdf_s_g_before$ASVs), digits = 2)
+totalsums_before$SD_ASVs[1]<-round(sd(samplesumdf_s_g_before$ASVs), digits = 2)
+totalsums_before$Min_ASVs[1]<-min(samplesumdf_s_g_before$ASVs)
+totalsums_before$Max_ASVs[1]<-max(samplesumdf_s_g_before$ASVs)
+
+saveRDS(totalsums_before, "data/totalsums_before.rds")
+
+totalsums_before %>%
+  kbl(caption = "Total sums before filtering") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+### 04. Total reads and ASVs after filtering
+
+```{r}
+totalsums_after<-data.frame("Type" =c("Skin & Gut", "Skin", "Gut"), 
+                            "Total_reads"=rep(NA,3),
+                            "Mean_reads"=rep(NA,3),
+                            "SD_reads"=rep(NA,3),
+                            "Min_reads"=rep(NA,3),
+                            "Max_reads"=rep(NA,3),
+                            "Total_ASVs"=rep(NA,3),
+                            "Mean_ASVs"=rep(NA,3),
+                            "SD_ASVs"=rep(NA,3), 
+                            "Min_ASVs"=rep(NA,3),
+                            "Max_ASVs"=rep(NA,3))
+
+# Total reads
+## Skin
+ps1_s_otu<-as.data.frame(ps1_s@otu_table) %>% mutate(Total=rowSums(.))
+totalsums_after$Total_reads[2]<-sum(ps1_s_otu$Total) 
+totalsums_after$Mean_reads[2]<-round(mean(samplesumdf_s_after$Sum_reads), digits = 2)
+totalsums_after$SD_reads[2]<-round(sd(samplesumdf_s_after$Sum_reads), digits = 2)
+totalsums_after$Min_reads[2]<-min(samplesumdf_s_after$Sum_reads)
+totalsums_after$Max_reads[2]<-max(samplesumdf_s_after$Sum_reads)
+
+## Gut
+ps1_g_otu<-as.data.frame(ps1_g@otu_table) %>% mutate(Total=rowSums(.))
+totalsums_after$Total_reads[3]<-sum(ps1_g_otu$Total) 
+totalsums_after$Mean_reads[3]<-round(mean(samplesumdf_g_after$Sum_reads), digits = 2)
+totalsums_after$SD_reads[3]<-round(sd(samplesumdf_g_after$Sum_reads), digits = 2)
+totalsums_after$Min_reads[3]<-min(samplesumdf_g_after$Sum_reads)
+totalsums_after$Max_reads[3]<-max(samplesumdf_g_after$Sum_reads)
+
+## Skin and gut
+ps1_s_g_otu<-as.data.frame(ps1_s_g@otu_table) %>% mutate(Total=rowSums(.))
+totalsums_after$Total_reads[1]<-sum(ps1_s_g_otu$Total)
+totalsums_after$Mean_reads[1]<-round(mean(samplesumdf_s_g_after$Sum_reads), digits = 2)
+totalsums_after$SD_reads[1]<-round(sd(samplesumdf_s_g_after$Sum_reads), digits = 2)
+totalsums_after$Min_reads[1]<-min(samplesumdf_s_g_after$Sum_reads)
+totalsums_after$Max_reads[1]<-max(samplesumdf_s_g_after$Sum_reads)
+
+# Total ASVs
+## Skin
+totalsums_after$Total_ASVs[2]<-ps1_s %>%
+  filter_taxa(function(x) sum(x)>0, TRUE) %>% taxa_names() %>% length() 
+totalsums_after$Mean_ASVs[2]<-round(mean(samplesumdf_s_after$ASVs), digits = 2)
+totalsums_after$SD_ASVs[2]<-round(sd(samplesumdf_s_after$ASVs), digits = 2)
+totalsums_after$Min_ASVs[2]<-min(samplesumdf_s_after$ASVs)
+totalsums_after$Max_ASVs[2]<-max(samplesumdf_s_after$ASVs)
+
+## Gut
+totalsums_after$Total_ASVs[3]<-ps1_g %>%
+  filter_taxa(function(x) sum(x)>0, TRUE) %>% taxa_names() %>% length() 
+totalsums_after$Mean_ASVs[3]<-round(mean(samplesumdf_g_after$ASVs), digits = 2)
+totalsums_after$SD_ASVs[3]<-round(sd(samplesumdf_g_after$ASVs), digits = 2)
+totalsums_after$Min_ASVs[3]<-min(samplesumdf_g_after$ASVs)
+totalsums_after$Max_ASVs[3]<-max(samplesumdf_g_after$ASVs)
+
+## Gut and skin
+totalsums_after$Total_ASVs[1]<-ps1_s_g %>%
+  filter_taxa(function(x) sum(x)>0, TRUE) %>% taxa_names() %>% length() 
+totalsums_after$Mean_ASVs[1]<-round(mean(samplesumdf_s_g_after$ASVs), digits = 2)
+totalsums_after$SD_ASVs[1]<-round(sd(samplesumdf_s_g_after$ASVs), digits = 2)
+totalsums_after$Min_ASVs[1]<-min(samplesumdf_s_g_after$ASVs)
+totalsums_after$Max_ASVs[1]<-max(samplesumdf_s_g_after$ASVs)
+
+saveRDS(totalsums_after, "data/totalsums_after.rds")
+
+totalsums_after %>%
+  kbl(caption = "Total sums after filtering") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+## f) Rarefaction curves
+
+```{r, results='hide', fig.show='hide', warning=FALSE, message=FALSE}
+# ASV table to data frame
+otu_table_s<-as.data.frame(ps0_s@otu_table)
+otu_table_g<-as.data.frame(ps0_g@otu_table)
+
+# Transpose otu table (vegan expects samples in rows)
+otu_table_s_t<-t(otu_table_s)
+otu_table_g_t<-t(otu_table_g)
+
+# Use rarecurve from vegan with "tidy" option
+skin_rare<-rarecurve(otu_table_s_t,step = 50,tidy = TRUE) %>% cross_join(meta_s)
+
+gut_rare<-rarecurve(otu_table_g_t,step = 50,tidy = TRUE) %>% cross_join(meta_g) 
+
+# Plot with ggplot
+plot1<-ggplot(skin_rare, aes(x = Sample, y = Species, colour = Site)) +
+   geom_line(size = 1) + 
+   ggtitle("A) Skin") +
+   theme_classic() +
+   theme(legend.position = "none", 
+         axis.text = element_text(size = 16),
+         axis.title = element_text(size = 18),
+         plot.title = element_text(size = 18, hjust = 0.05)) +
+   scale_colour_viridis(discrete = TRUE, option = "H") + 
+   scale_x_continuous(breaks = seq(0, max(skin_rare$Sample), by = 20000)) +
+   labs(x = "Number of reads", y = "Observed ASVs")
+
+plot2<-ggplot(gut_rare, aes(x = Sample, y = Species, colour = Site)) +
+   geom_line(size = 1) + 
+   ggtitle("B) Gut") +
+   theme_classic() +
+   theme(legend.position = "none", 
+         axis.text = element_text(size = 16),
+         axis.title = element_text(size = 18),
+         plot.title = element_text(size = 18, hjust = 0.05)) +
+   scale_colour_viridis(discrete = TRUE, option = "H") + 
+   scale_x_continuous(breaks = seq(0, max(gut_rare$Sample), by = 20000)) +
+   labs(x = "Number of reads", y = "Observed ASVs")
+
+plot1 + plot2 
+```
+
+```{r, echo = FALSE}
+setwd("C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts")
+knitr::include_graphics("../out/Figure_S1_rarefuction_curves_skin_gut.png")
+```
+
+
+## g) Rarefy my samples
+
+Rarefy samples to the lowest number of reads
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+otu_table_s_t<-ps1_s %>% otu_table() %>% as.data.frame() %>% t() 
+min(rowSums(otu_table_s_t)) #53502= min depth => we will rarefy here
+
+otu_table_g_t<-ps1_g %>% otu_table() %>% as.data.frame() %>% t() 
+min(rowSums(otu_table_g_t)) #61378 = min depth => we will rarefy here
+
+set.seed(1)
+ps1_s_rar<-rarefy_even_depth(ps1_s, sample.size = min(sample_sums(ps1_s)), rngseed = F)
+
+set.seed(1)
+ps1_g_rar<-rarefy_even_depth(ps1_g, sample.size = min(sample_sums(ps1_g)), rngseed = F)
+
+# Merge rarefied phyloseq objects
+ps1_s_g_rar<-merge_phyloseq(ps1_s_rar, ps1_g_rar)
+
+# Save phyloseq object
+saveRDS(ps1_s_rar, "data/ps1_s_rar.rds")
+saveRDS(ps1_g_rar, "data/ps1_g_rar.rds")
+saveRDS(ps1_s_g_rar, "data/ps1_s_g_rar.rds")
+```

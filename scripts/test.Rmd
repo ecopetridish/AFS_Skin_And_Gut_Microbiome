@@ -1,0 +1,16 @@
+---
+title: "A) Sequencing data processing"
+output: 
+  html_document:
+    theme: cosmo
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+<br>
+```{r, echo = FALSE}
+knitr::include_graphics("../out/rarefuction_curves_skin_gut.png")
+```
+
+<br><br>

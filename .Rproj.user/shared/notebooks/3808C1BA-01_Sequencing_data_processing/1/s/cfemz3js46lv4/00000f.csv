@@ -1,0 +1,4 @@
+"0","# Load datasets"
+"0","asv<-read.csv(""data/asv.csv"",header = T)"
+"0","taxa<-read.csv(""data/taxa.csv"",header=T) "
+"0","meta<-read.csv(""data/meta.csv"",header=T)"

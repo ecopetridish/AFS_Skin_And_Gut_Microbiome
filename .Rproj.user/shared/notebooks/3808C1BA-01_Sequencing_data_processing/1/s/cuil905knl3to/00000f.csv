@@ -1,0 +1,2 @@
+"0","ps0_s_g<-merge_phyloseq(ps0_s,ps0_g) #before filtering"
+"0","ps1_s_g<-merge_phyloseq(ps1_s,ps1_g) #after filtering"

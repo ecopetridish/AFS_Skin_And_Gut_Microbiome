@@ -1,0 +1,81 @@
+
+
+# Quick script to check the unchecked for the pilot study manuscript
+
+#########################################################################
+# Number 1: What about the other alpha diversity indices (Colony, Age)? #
+#########################################################################
+# Skin first
+
+## Observed + rarefied data
+model_obs<-lmer(Observed ~ Colony + Age + (1|Pair_ID), data = skin_data_rar) 
+Anova(model_obs) # Colony and Age sf
+summary(model_obs)
+r.squaredGLMM(model_obs) # random effects explain variation
+
+## chao + rarefied data
+model_chao_rar<-lmer(Chao1 ~ Colony + Age + (1|Pair_ID), data = skin_data_rar) 
+Anova(model_chao_rar) # Colony and Age sf
+summary(model_chao_rar)
+r.squaredGLMM(model_chao_rar) # random effects explain variation
+
+## chao without rarefied data
+model_chao<-lmer(Chao1 ~ Colony + Age + (1|Pair_ID), data = skin_data) 
+Anova(model_chao)  # Colony and Age sf
+summary(model_chao)
+r.squaredGLMM(model_chao) # random effects explain variation
+
+
+# Gut second
+
+## Observed + rarefied data
+model_obs<-lmer(Observed ~ Colony + Age + (1|Pair_ID), data = gut_data_rar) 
+Anova(model_obs) # Age sf, borderline
+summary(model_obs)
+r.squaredGLMM(model_obs) # random effects explain variation
+
+## chao + rarefied data
+model_chao_rar<-lmer(Chao1 ~ Colony + Age + (1|Pair_ID), data = gut_data_rar) 
+Anova(model_chao_rar) # Age sf, borderline
+summary(model_chao_rar)
+r.squaredGLMM(model_chao_rar) # random effects explain variation
+
+## chao without rarefied data
+model_chao<-lmer(Chao1 ~ Colony + Age + (1|Pair_ID), data = gut_data) 
+Anova(model_chao) # Age sf, borderline
+summary(model_chao)
+r.squaredGLMM(model_chao) # random effects explain variation
+
+
+#################################################################
+# Number 2: What about the other alpha diversity indices (Sex)? #
+#################################################################
+
+# Gut
+
+model_obs<-lm(Observed ~ Colony + Sex, data = pup_data_skin_rar) 
+anova(model_obs) # Colony
+summary(model_obs)
+
+model_chao_rar<-lm(Chao1 ~ Colony + Sex, data = pup_data_skin_rar) 
+anova(model_chao_rar) # Colony
+summary(model_chao_rar)
+
+model_chao<-lm(Chao1 ~ Colony + Sex, data = pup_data_skin) 
+anova(model_chao) # Colony
+summary(model_chao)
+
+
+# Skin
+
+model_obs<-lm(Observed ~ Colony + Sex, data = pup_data_gut_rar) 
+anova(model_obs) # nothing
+summary(model_obs)
+
+model_chao_rar<-lm(Chao1 ~ Colony + Sex, data = pup_data_gut_rar) 
+anova(model_chao_rar) # nothing
+summary(model_chao_rar)
+
+model_chao<-lm(Chao1 ~ Colony + Sex, data = pup_data_gut) 
+anova(model_chao) # nothing
+summary(model_chao)

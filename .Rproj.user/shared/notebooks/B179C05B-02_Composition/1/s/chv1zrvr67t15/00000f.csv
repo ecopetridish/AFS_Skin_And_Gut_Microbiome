@@ -1,0 +1,8 @@
+"0","# Select phyla with more than 1% abundance"
+"0","plot<-ps1_s_g %>%"
+"0","      tax_glom(taxrank = ""phylum"") %>%                     "
+"0","      transform_sample_counts(function(x) {x/sum(x)} ) %>%"
+"0","      psmelt() %>%                                         "
+"0","      filter(Abundance > 0.01) %>%                         "
+"0","      mutate(Abundance100 = round(Abundance*100, digits = 2)) %>% "
+"0","      arrange(desc(Abundance))                             "

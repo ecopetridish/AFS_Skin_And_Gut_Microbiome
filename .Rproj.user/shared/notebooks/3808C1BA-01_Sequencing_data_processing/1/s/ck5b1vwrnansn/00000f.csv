@@ -1,0 +1,5 @@
+"0","# Skin"
+"0","ps_s<-ps0_s %>% subset_taxa(!is.na(phylum)) %>% subset_taxa(family != ""Mitochondria"" & class  != ""Chloroplast"")"
+"0",""
+"0","# Gut"
+"0","ps_g<-ps0_g %>% subset_taxa(!is.na(phylum)) %>% subset_taxa(family != ""Mitochondria"" & class  != ""Chloroplast"")"

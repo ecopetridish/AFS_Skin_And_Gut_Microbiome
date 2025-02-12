@@ -1,0 +1,3 @@
+"0","# Convert taxa to matrix (needed for phyloseq)"
+"0","taxa<-as.matrix(taxa)"
+"0","saveRDS(taxa, ""data/taxa.rds"")"

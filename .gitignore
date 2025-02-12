@@ -1,0 +1,5 @@
+# Ignore specific files
+
+Non_tested_in_pilot_study.R
+scripts/*.html
+scripts/*.pdf

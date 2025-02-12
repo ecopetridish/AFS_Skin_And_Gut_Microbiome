@@ -1,0 +1,8 @@
+"0","# load libraries"
+"0","library(corncob)"
+"0","library(extrafont) #needed to import fonts from my system"
+"2","Registering fonts with R
+"
+"0","library(tidyverse)"
+"0","library(patchwork)"
+"0","library(phyloseq)"

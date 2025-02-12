@@ -1,0 +1,6 @@
+"0","# Create column with F or T if its a negative control or not"
+"0","## Skin"
+"0","sample_data(ps0s_ec)$is.neg<-sample_data(ps0s_ec)$Type_2 == ""Control"" #create column with F or T if its a negative control or not"
+"0",""
+"0","## Gut"
+"0","sample_data(ps0g_ec)$is.neg<-sample_data(ps0g_ec)$Type_2 == ""Control"" "
