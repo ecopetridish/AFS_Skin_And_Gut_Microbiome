@@ -63,6 +63,22 @@ taxa[,1]<-paste0("ASV_",seq(1:nrow(taxa)))
 taxa<-taxa %>% dplyr::rename("ASV"="X")
 ```
 
+
+```{r}
+# Change phyla names based on updated taxonomy (DOI: 10.1099/ijsem.0.005056)
+taxa<-taxa %>%
+  mutate(phylum = case_when(
+    phylum == "Actinobacteriota" ~ "Actinomycetota",
+    phylum == "Firmicutes" ~ "Bacillota",
+    phylum == "Chloroflexi" ~ "Chloroflexota",
+    phylum == "Proteobacteria" ~ "Pseudomonadota",
+    phylum == "Desulfobacterota" ~ "Thermodesulfobacteriota",
+    TRUE ~ phylum)) 
+
+# Check if everything went well
+taxa %>% distinct(phylum) %>% arrange(phylum)
+```
+
 ## b) Create phyloseq objects
 
 ```{r, results='hide'}
@@ -157,9 +173,11 @@ sample_data(ps0g_ec)$is.neg<-sample_data(ps0g_ec)$Type_2 == "Control"
 # Identify contaminators
 ## Skin
 contamdf.prev_skin<-isContaminant(ps0s_ec, method="prevalence", neg="is.neg", threshold = 0.1) 
+table(contamdf.prev_skin$contaminant) #TRUE:421
 
 ## Gut
 contamdf.prev_gut<-isContaminant(ps0g_ec, method="prevalence", neg="is.neg", threshold = 0.1) 
+table(contamdf.prev_gut$contaminant) #TRUE:699
 ```
 
 ```{r}
@@ -223,7 +241,6 @@ samplesumdf_g<-sample_sums(ps0_g) %>% data.frame(sum = .) %>% tibble::rownames_t
  
 plot_seq_depth(samplesumdf_g, "Gut") #none of the samples has less than 100000 reads
 plot_reads_freq(samplesumdf_g, "Gut") #nothing to remove
- 
 ```
 
 ### 03. Remove ASVs that are Chloroplasts, Mitochondria, or have NA on phylum level
@@ -263,7 +280,7 @@ prevdf_g<-data.frame(Prevalence = prev0_g,
 ps1_g<-prune_taxa((prevdf_g$Prevalence >= 2), ps_g) 
 ```
 
-### 05. Merge and save phyloseq objects
+### 05. Merge phyloseq objects
 
 ```{r, results='hide'}
 # Merge phyloseq objects
@@ -279,9 +296,28 @@ saveRDS(ps1_s_g, "data/ps1_s_g.rds")
 ```
 
 
-## e) Create statistics tables
+## e) Create samples tables
 
-### 01. Reads and ASVs per sample before filtering
+### 01. Sample information table
+```{r}
+samples_table<-meta %>% filter(Type_2!="Control") %>% select(c(3,4,6:8,10)) %>% 
+  rename(Sample_ID = BAS_ID, Body_site = Type_1) %>% arrange(Sample_ID)
+
+controls_table<-meta %>% filter(Type_2 == "Control") %>% 
+  select(4) %>% rename(Sample_ID = Type_1) %>% 
+  mutate(Sample_ID = case_when(Sample_ID == "FWB" ~ "FWB soil",
+                              Sample_ID == "SSB" ~ "SSB soil",
+                              TRUE ~ Sample_ID))
+
+samples_table %>% bind_rows(controls_table) %>% 
+  mutate(Body_site = case_when(is.na(Body_site) ~ "Control", 
+                               TRUE ~ Body_site)) %>% 
+  kbl(caption = "Samples information") %>% 
+  kable_classic(full_width = F, html_font = "Cambria") 
+```
+
+
+### 02. Reads and ASVs per sample before filtering
 
 ```{r}
 # Skin
@@ -326,7 +362,7 @@ samplesumdf_s_g_before<-merge(samplesumdf_s_g_before, meta[!meta$Type_2=="Contro
 saveRDS(samplesumdf_s_g_before, "data/samplesumdf_s_g_before.rds")
 ```
 
-### 02. Reads and ASVs per sample after filtering
+### 03. Reads and ASVs per sample after filtering
 
 ```{r}
 # Skin
@@ -371,7 +407,7 @@ saveRDS(samplesumdf_s_g_after, "data/samplesumdf_s_g_after.rds")
 ```
 
 
-### 03. Total reads and ASVs before filtering
+### 04. Total reads and ASVs before filtering
 
 ```{r}
 totalsums_before<-data.frame(Type=c("Skin & Gut", "Skin", "Gut"), 
@@ -444,7 +480,7 @@ totalsums_before %>%
   kable_classic(full_width = F, html_font = "Cambria")
 ```
 
-### 04. Total reads and ASVs after filtering
+### 05. Total reads and ASVs after filtering
 
 ```{r}
 totalsums_after<-data.frame("Type" =c("Skin & Gut", "Skin", "Gut"), 
@@ -558,6 +594,9 @@ plot2<-ggplot(gut_rare, aes(x = Sample, y = Species, colour = Site)) +
    labs(x = "Number of reads", y = "Observed ASVs")
 
 plot1 + plot2 
+
+ggsave("Figure_S1_rarefaction_curves_skin_gut.png", path = output_dir,
+       width = 45, height = 22, units = "cm", dpi = 300)
 ```
 
 ```{r, echo = FALSE}
@@ -591,3 +630,5 @@ saveRDS(ps1_s_rar, "data/ps1_s_rar.rds")
 saveRDS(ps1_g_rar, "data/ps1_g_rar.rds")
 saveRDS(ps1_s_g_rar, "data/ps1_s_g_rar.rds")
 ```
+
+

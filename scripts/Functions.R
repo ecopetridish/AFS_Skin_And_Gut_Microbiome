@@ -170,7 +170,7 @@ calculate_coefficients <- function(model_out, df, n) {
 plot_forest <- function(df, title_left, title_right,col1,col2) {
   df$color <- ifelse(df$beta < 0, title_left, title_right)
   
-  ggplot(df, aes(x = beta, y = taxa, color = color)) +
+  ggplot(df, aes(x = beta, y = factor(taxa, levels = rev(sort(unique(taxa)))), color = color)) +
     geom_point(size = 3.5, shape=15) +
     geom_errorbarh(aes(xmin = confint.low, xmax = confint.up), linewidth = 1.2, height = 0) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "#636363") +

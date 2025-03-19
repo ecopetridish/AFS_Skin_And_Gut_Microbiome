@@ -8,6 +8,14 @@ output:
       collapsed: true
 ---
 
+```{r, results='hide', error=FALSE}
+# Set output directory
+output_dir<-"out"
+
+# Load functions
+source("scripts/Functions.R")
+```
+
 ```{r, results='hide', message=FALSE, error=FALSE, warning=FALSE}
 # Load packages
 library(tidyverse)
@@ -17,7 +25,6 @@ library(cowplot) #ggdraw
 library(kableExtra)
 library(phyloseq)
 ```
-
 
 ```{r, results='hide', warning=FALSE}
 # Load phyloseq objects
@@ -45,6 +52,8 @@ TotalPhylumCounts_Phylum_skin<-TotalPhylumCounts_skin %>%
                                       "Body site" = "Skin") %>% 
                                arrange(desc(Abundance))
 
+nrow(TotalPhylumCounts_Phylum_skin)
+
 saveRDS(TotalPhylumCounts_Phylum_skin, "data/TotalPhylumCounts_Phylum_skin.rds")
 
 TotalPhylumCounts_Phylum_skin %>%
@@ -67,6 +76,8 @@ TotalPhylumCounts_Phylum_gut<-TotalPhylumCounts_gut %>%
                               mutate(Abundance = round(((Reads / sum(Reads)) * 100), 2),
                                      "Body site" = "Gut") %>% 
                               arrange(desc(Abundance))
+
+nrow(TotalPhylumCounts_Phylum_gut)
 
 saveRDS(TotalPhylumCounts_Phylum_gut, "data/TotalPhylumCounts_Phylum_gut.rds")
 
@@ -99,6 +110,10 @@ prev90_skin<-prev90_skin %>% filter(Prevalence>0.9*40) %>%
              rename("Phylum" = "phylum", "Genus"="genus","Family"="family",
                     "Species"="species", "Relative abundance (%)" = "Rel_ab") 
 
+nrow(prev90_skin) #136 ASVs
+
+prev90_skin %>% group_by(Phylum) %>% summarise(sum=sum(`Relative abundance (%)`)) %>%  arrange(desc(sum)) # core phyla abundances
+
 saveRDS(prev90_skin, "data/prev90_skin.rds")
 
 prev90_skin %>%
@@ -124,6 +139,9 @@ prev90_gut<-prev90_gut %>% filter(Prevalence>0.9*40) %>%
                    "Species"="species", "Relative abundance (%)" = "Rel_ab")
 row.names(prev90_gut)<-NULL
 
+nrow(prev90_gut) # 64 ASVs
+prev90_gut %>% group_by(Phylum) %>% summarise(sum=sum(`Relative abundance (%)`)) %>%  arrange(desc(sum)) # core phyla abundances
+
 saveRDS(prev90_gut, "data/prev90_gut.rds")
 
 prev90_gut %>%
@@ -137,70 +155,84 @@ prev90_gut %>%
 ```{r, results='hide'}
 # Select phyla with more than 1% abundance
 plot<-ps1_s_g %>%
-      tax_glom(taxrank = "phylum") %>%                     
-      transform_sample_counts(function(x) {x/sum(x)} ) %>%
-      psmelt() %>%                                         
-      filter(Abundance > 0.01) %>%                         
-      mutate(Abundance100 = round(Abundance*100, digits = 2)) %>% 
-      arrange(desc(Abundance))                             
+  tax_glom(taxrank = "phylum") %>%                     
+  transform_sample_counts(function(x) {x/sum(x)} ) %>%
+  psmelt() %>%      
+  filter(Abundance > 0) %>% 
+  arrange(desc(Abundance))                              
 ```
 
-```{r, results='hide', fig.show='hide', warning=FALSE, error=FALSE}
-# Plot gut and skin relative abundances
-## Get unique phylum levels for skin and gut
-length(unique(plot$phylum)) #15
 
-## Define the colors to use
+Plot gut and skin relative abundances
+```{r, results='hide', warning=FALSE, error=FALSE, fig.show='hide'}
+length(unique(plot$phylum)) #30
+
+# Identify phyla below threshold (0.01) and name them as "Other"
+plot<-plot %>% 
+  mutate(phylum = ifelse(Abundance < 0.01 | Abundance == 0.01, "Other", phylum))
+
+# Adjust the colors of the plot
+length(unique(plot$phylum)) # Count unique phyla including "Other"
+
+# Define the colors to use
 pal1<-brewer.pal(n = 11, name = "BrBG")
-pal1<-replace(pal1, pal1=="#F5F5F5","#a6bddb")
+pal1<-replace(pal1, pal1=="#F5F5F5", "#a6bddb")
 pal2<-brewer.pal(n = 4, name = "PiYG")
-pal2<-replace(pal2, pal2=="#4DAC26","#e0f3db")
-myColors<-c(pal1, pal2)
+pal2<-replace(pal2, pal2=="#4DAC26", "#e0f3db")
+myColors<-c(pal1, pal2, "grey50")  # Add grey for "Other"
 
-## Set the colors with names
-names(myColors)<-levels(as.factor(plot$phylum))
-names_phylum<-sort(unique(plot$phylum)) #15
+# Set the order of the phylum
+phylum_order<-c("Acidobacteriota", "Actinomycetota", "Bacteroidota", "Campylobacterota","Chloroflexota", "Cyanobacteria", "Deferribacterota", "Deinococcota", "Thermodesulfobacteriota", "Bacillota", "Fusobacteriota", "Gemmatimonadota", "Patescibacteria", "Planctomycetota", "Pseudomonadota", "Other") # Add "Other"
+
+# Set the colors with names
+names(myColors)<-phylum_order
 
 # Define the order of pair_ids
-pairid_order<-paste0("P",1:20)
+pairid_order<-paste0("P", 1:20)
 plot$Pair_ID<-factor(plot$Pair_ID, levels = pairid_order)
 
-## Plot rel. abundance
+# Figure Composition Plot
 p1<-plot %>% 
   filter(Type_2 == "Skin") %>%
-  mutate(phylum = factor(phylum, levels = names_phylum)) %>% 
+  mutate(phylum = factor(phylum, levels = phylum_order)) %>% 
   ggplot(aes(x = Pair_ID, y = Abundance, fill = phylum)) +      
   facet_grid(Age ~ Colony, scales = "free_x") + 
   geom_bar(stat = "identity", width = 0.9, show.legend = TRUE) +
   theme_classic() +
   ggtitle("A) Skin") +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.25), expand = c(0, 0)) +
   theme(strip.background = element_blank(), 
-        strip.text.x = element_text(size = 16, vjust = -1.4), 
+        strip.text.x = element_text(size = 16, vjust = 0.1), 
         strip.text.y = element_blank(),
-        axis.line = element_blank(), 
+        axis.line.y.left = element_line(size = 0.5, color = "black"),  
+        axis.text.y.left = element_text(size = 14),  
+        axis.ticks.y.left = element_line(size = 0.5, color = "black"),  
+        axis.ticks.length = unit(0.2, "cm"), 
+        axis.line.x = element_blank(),  
         axis.text.x = element_blank(),
-        axis.text.y = element_text(size = 14),
-        axis.ticks = element_blank(), 
+        axis.ticks.x = element_blank(), 
         axis.title.x = element_blank(), 
         axis.title.y = element_text(size = 18),
-        plot.title = element_text(size = 18, vjust = -1), 
-        panel.spacing = unit(0, "lines"),
+        plot.title = element_text(size = 18, vjust = -0.5), 
+        panel.spacing.y = unit(1, "lines"), 
+        panel.spacing.x = unit(0, "lines"),
         legend.text = element_text(size = 16),
         legend.title = element_text(size = 16)) +
   scale_fill_manual(values = myColors, name = "Phylum", drop = FALSE) + 
   ylab("Relative abundance")
 
 p2<-plot %>% 
-  dplyr::filter(Type_2 == "Gut") %>%
-  mutate(Age = dplyr::recode(Age, Mother = "Mothers", Pup = "Pups")) %>% 
-  mutate(phylum = factor(phylum, levels = names_phylum)) %>% 
+  filter(Type_2 == "Gut") %>%
+  mutate(Age = recode(Age, Mother = "Mothers", Pup = "Pups")) %>% 
+  mutate(phylum = factor(phylum, levels = phylum_order)) %>% 
   ggplot(aes(x = Pair_ID, y = Abundance, fill = phylum)) +      
   facet_grid(Age ~ Colony, scales = "free_x") + 
-  geom_bar(stat = "identity", width = 0.9, show.legend = TRUE) +
+  geom_bar(stat = "identity", width = 0.9, show.legend = FALSE) +
   theme_classic() +
   ggtitle("B) Gut") +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.25), expand = c(0, 0)) +
   theme(strip.background = element_blank(), 
-        strip.text.x = element_text(size = 16, vjust = -1.4), 
+        strip.text.x = element_text(size = 16, vjust = 0.1), 
         strip.text.y = element_text(size = 16),
         axis.line = element_blank(), 
         axis.text.x = element_blank(),
@@ -208,9 +240,9 @@ p2<-plot %>%
         axis.ticks = element_blank(), 
         axis.title.x = element_blank(), 
         axis.title.y = element_blank(),
-        plot.title = element_text(size = 18, vjust = -1), 
-        panel.spacing = unit(0, "lines"),
-        legend.text = element_text(size = 16),
+        plot.title = element_text(size = 18, vjust = -0.5), 
+        panel.spacing.y = unit(1, "lines"),  # High spacing between top and bottom panels
+        panel.spacing.x = unit(0, "lines"),  # No spacing between left and right panels        
         legend.title = element_text(size = 16)) +
   scale_fill_manual(values = myColors, name = "Phylum", drop = FALSE) + 
   ylab("")
@@ -220,17 +252,18 @@ combined_plot<-p1 + p2 + plot_layout(guides = "collect")
 
 # Draw x title with some background 
 x_title<-ggdraw() + 
-         draw_label("Mother-pup pair", size = 18, hjust = 1.1, y = 1.2, fontfamily = "Arial") +
-         theme(panel.background = element_rect(fill = "White", color = "White"))
+  draw_label("Mother-pup pair", size = 18, hjust = 1.3, y = 1.2) +
+  theme(panel.background = element_rect(fill = "White", color = "White"))
+
 # Plot it
-plot_grid(combined_plot, 
-          x_title, 
-          nrow = 2, 
-          rel_heights = c(4, 0.1))
+plot_grid(combined_plot, x_title, nrow = 2, rel_heights = c(4, 0.1))
+
+# Save the figure
+ggsave("Figure_02_Composition_phylum_001.png", path = output_dir,
+       width = 26, height = 17, units = "cm", dpi = 300)
 ```
 
-
-```{r, echo = FALSE}
+```{r, echo=FALSE}
 setwd("C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts")
 knitr::include_graphics("../out/Figure_02_Composition_phylum_001.png")
 ```

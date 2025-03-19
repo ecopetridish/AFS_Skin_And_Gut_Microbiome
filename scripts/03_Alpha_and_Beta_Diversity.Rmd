@@ -8,6 +8,14 @@ output:
       collapsed: true
 ---
 
+```{r, results='hide', error=FALSE}
+# Set output directory
+output_dir<-"out"
+
+# Load functions
+source("scripts/Functions.R")
+```
+
 ```{r, results='hide', message=FALSE, warning=FALSE, error=FALSE}
 # Load packages
 library(RColorBrewer) 
@@ -47,7 +55,7 @@ taxa_s.obj<-tax_table(taxa)
 taxa_g.obj<-tax_table(taxa)
 ```
 
-# 01. Calculate alpha-diversity
+# 01. Calculate alpha diversity
 ```{r, results='hide'}
 diversity_df<-ps1_s_g %>% 
               estimate_richness(measures = c("Shannon", "Simpson",
@@ -375,6 +383,13 @@ ps_css_g.obj<-phyloseq(asv_g_css.obj,taxa_g.obj, meta_g.obj)
 ps_css.obj<-merge_phyloseq(ps_css_s.obj,ps_css_g.obj)
 ```
 
+
+```{r}
+# Save normalized phyloseq objects
+saveRDS(ps_css_s.obj, "data/ps_css_s.obj.rds")
+saveRDS(ps_css_g.obj, "data/ps_css_g.obj.rds")
+```
+
 ## b)  Bray-curtis dissimilarity matrix 
 
 ```{r, results='hide', warning=FALSE}
@@ -383,7 +398,7 @@ bray_curtis_dist_s<-distance(ps_css_s.obj, method = "bray")
 bray_curtis_dist_g<-distance(ps_css_g.obj, method = "bray")
 ```
 
-## c) Model beta diversity with Permanova
+# 04. Model beta diversity 
 
 ```{r, results='hide'}
 # Model1: Effect of Colony, Age and Pair_ID in the skin
@@ -528,54 +543,92 @@ perm1 %>%
   pack_rows("Gut-pups", 15, 18)
 ```
 
-# 04. Plot alpha and beta diversity
+# 05. Plot alpha and beta diversity
 
 ```{r, results='hide', warning=FALSE}
 # Alpha diversity plots
 a1<-diversity_df %>%
-    subset(Body_site=="Skin") %>%
-    filter(!BAS_ID=="H11") %>%
-    ggplot(aes(Colony, Shannon, by = Colony_Age)) +
-      geom_boxplot(outlier.colour="black", aes(fill = Colony_Age)) +
-      geom_jitter(color="black", size=1.6, alpha=0.7) +
-      scale_fill_manual(values =
-                        c("#01665E", "#E6F5D0", "#C51B7D", "#FDE0EF"),
-                        name = "Col_Age") +
-      theme_classic() +
-      theme(axis.title = element_text(size = 18),
-            axis.title.y = element_text(vjust = -3),
-            axis.text = element_text(size = 16, colour = "black"),
-            axis.line = element_line(colour = "black",
-                                     size = 0.6, linetype = 1),
-            axis.ticks = element_line(colour = "black",
-                                      size = 0.5, linetype = 1),
-            plot.title = element_text(hjust = 0.05, vjust = -1, size = 18),
-            legend.position = "none") +
-      labs(x = "Colony", y = "Shannon index\n") +
-      scale_y_continuous(limits = c(4,7))
+  subset(Body_site == "Skin") %>%
+  filter(!BAS_ID == "H11") %>%
+  ggplot(aes(x = Colony, y = Shannon, fill = Colony_Age)) +
+  geom_boxplot(outlier.shape = NA) +  
+  geom_point(aes(group = Colony_Age), 
+             position=position_jitterdodge(jitter.width = 0.2),
+             size = 1.4, alpha = 0.7) +
+  scale_fill_manual(values = c("#2b8cbe", "#a6bddb", "#e6550d", "#fdae6b"),
+                    name = "Col_Age") +
+  theme_classic() +
+  theme(axis.title = element_text(size = 18),
+        axis.title.y = element_text(vjust = -3),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.line = element_line(colour = "black",
+                                 size = 0.6, linetype = 1),
+        axis.ticks = element_line(colour = "black",
+                                  size = 0.5, linetype = 1),
+        plot.title = element_text(hjust = 0.05, vjust = -1, size = 18),
+        legend.position = "none") +
+  labs(x = "Colony", y = "Shannon index\n") +
+  scale_y_continuous(limits = c(4,7))
 
 a2<-diversity_df %>% 
-    subset(Body_site=="Gut") %>% 
-    ggplot(aes(Colony, Shannon, by = Colony_Age)) +
-     geom_boxplot(outlier.colour = "black", aes(fill = Colony_Age)) +
-     geom_jitter(color="black", size=1.6, alpha = 0.7) +
-     guides(fill = guide_legend(ncol = 2)) + 
-     scale_fill_manual(values = c("#01665E", "#E6F5D0", "#C51B7D", "#FDE0EF"),
-                       name = "Col_Age") +
-     theme_classic() +
-     theme(axis.title = element_text(size = 18),
-           axis.title.y = element_text(vjust = -3), 
-           axis.text = element_text(size = 16, colour = "black"),
-           axis.line = element_line(colour = "black", size = 0.6, 
-                                    linetype = 1),
-           axis.ticks = element_line(colour = "black", size = 0.5,
-                                     linetype = 1),
-           plot.title = element_text(hjust = 0.05, vjust = -1, size = 18),
-           legend.position = "bottom",
-           legend.text = element_text(size = 16),
-           legend.title = element_blank()) +
-     labs(x = "Colony", y = "Shannon index\n")
+  subset(Body_site=="Gut") %>% 
+  ggplot(aes(Colony, Shannon, fill = Colony_Age)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_point(aes(group = Colony_Age), 
+             position=position_jitterdodge(jitter.width = 0.2),
+             size = 1.4, alpha = 0.7) +
+  guides(fill = guide_legend(ncol = 2)) + 
+  scale_fill_manual(values = c("#2b8cbe","#a6bddb","#e6550d","#fdae6b"),
+                    name = "Col_Age") +
+  theme_classic() +
+  theme(axis.title = element_text(size = 18),
+        axis.title.y = element_text(vjust = -3), 
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.line = element_line(colour = "black", size = 0.6, 
+                                 linetype = 1),
+        axis.ticks = element_line(colour = "black", size = 0.5,
+                                  linetype = 1),
+        plot.title = element_text(hjust = 0.05, vjust = -1, size = 18),
+        legend.position = "bottom",
+        legend.text = element_text(size = 16),
+        legend.title = element_blank()) +
+  labs(x = "Colony", y = "Shannon index\n")
 ```
+
+
+```{r, results='hide', fig.show='hide', warning=FALSE, error=FALSE, comment=FALSE}
+# Alpha diversity skin plot with outlier
+diversity_df %>%
+  subset(Body_site == "Skin") %>%
+  ggplot(aes(x = Colony, y = Shannon, fill = Colony_Age)) +
+  geom_boxplot(outlier.shape = NA) +  
+  geom_point(aes(group = Colony_Age), 
+             position=position_jitterdodge(jitter.width = 0.2),
+             size = 1.4, alpha = 0.7) +
+  scale_fill_manual(values = c("#2b8cbe", "#a6bddb", "#e6550d", "#fdae6b"),
+                    name = "Col_Age") +
+  theme_classic() +
+  theme(axis.title = element_text(size = 18),
+        axis.title.y = element_text(vjust = -3),
+        axis.text = element_text(size = 16, colour = "black"),
+        axis.line = element_line(colour = "black",
+                                 size = 0.6, linetype = 1),
+        axis.ticks = element_line(colour = "black",
+                                  size = 0.5, linetype = 1),
+        plot.title = element_text(hjust = 0.05, vjust = -1, size = 18),
+        legend.position = "right",
+        legend.text = element_text(size = 16),
+        legend.title = element_blank()) +
+  labs(x = "Colony", y = "Shannon index\n")
+
+ggsave("Figure_S3_alpha_diversity_skin_outlier.png", path = output_dir,
+       width = 27, height = 22, units = "cm", dpi = 300)
+```
+```{r, echo = FALSE}
+setwd("C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts")
+knitr::include_graphics("../out/Figure_S3_alpha_diversity_skin_outlier.png")
+```
+
 
 ```{r, results='hide', warning=FALSE}
 # Beta diversity plots
@@ -602,49 +655,47 @@ nmds_scores_g<-nmds_scores_g %>%
 b1<-ggplot(nmds_scores_s,
            aes(x = NMDS1, y = NMDS2, color = factor(Colony_Age),
                group = Pair_ID)) + 
-     geom_line() +
-     geom_point(size = 1.6) + 
-     theme_classic() + 
-     scale_color_manual(values = c("#01665E", "#80CDC1",
-                                   "#C51B7D", "#E9A3C9")) +
-     labs(x = "NMDS1", y = "NMDS2", color = "Col_Age") +
-     theme(axis.line = element_line(size = 0.6, linetype = 1,
-                                    colour = "black"),
-           axis.title.y = element_text(vjust = 0.3), 
-           axis.ticks = element_line(size = 0.5, linetype = 1,
-                                     colour = "black"),
-           axis.title = element_text(size = 18),
-           axis.text = element_text(size = 16, colour = "black"),
-           plot.title = element_text(hjust = 0.05, vjust = -1, size = 18),
-           legend.position = "none") +
-     scale_y_continuous(limits = c(-0.7, 0.8), breaks = seq(-0.6,0.6,0.3))
+  geom_line() +
+  geom_point(size = 1.4) + 
+  theme_classic() + 
+  scale_color_manual(values = c("#2b8cbe","#a6bddb","#e6550d","#fdae6b")) +
+  labs(x = "NMDS1", y = "NMDS2", color = "Col_Age") +
+  theme(axis.line = element_line(size = 0.6, linetype = 1,
+                                 colour = "black"),
+        axis.title.y = element_text(vjust = 0.3), 
+        axis.ticks = element_line(size = 0.5, linetype = 1,
+                                  colour = "black"),
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        plot.title = element_text(hjust = 0.05, vjust = -1, size = 18),
+        legend.position = "none") +
+  scale_y_continuous(limits = c(-0.7, 0.8), breaks = seq(-0.6,0.6,0.3))
 
 b2<-ggplot(nmds_scores_g, aes(x = NMDS1, y = NMDS2, color = factor(Colony_Age),
-                                group = Pair_ID)) + 
-     geom_line() +
-     geom_point(size = 1.6) + 
-     guides(color = guide_legend(ncol = 2)) + 
-     theme_classic() + 
-     scale_color_manual(values = c("#01665E", "#80CDC1",
-                                   "#C51B7D", "#E9A3C9")) +
-     scale_y_continuous(labels = number_format(accuracy = 0.1),
-                        limits = c(-0.8,0.5),
-                        breaks = seq(-0.8,0.5, by = 0.4)) + 
-     labs(x = "NMDS1", y = "NMDS2", color = "Col_Age") +
-     theme(axis.line = element_line(size = 0.6, linetype = 1,
-                                    colour = "black"),
-           axis.title.y = element_text(vjust = 0.3), 
-           axis.ticks = element_line(size = 0.5, linetype = 1,
-                                     colour = "black"),
-           axis.title = element_text(size = 18),
-           axis.text = element_text(size = 16, colour = "black"),
-           plot.title = element_text(hjust = 0.05, vjust = -1, size = 18),
-           legend.position = "bottom",
-           legend.text = element_text(size = 16),
-           legend.title = element_blank())
+                              group = Pair_ID)) + 
+  geom_line() +
+  geom_point(size = 1.4) + 
+  guides(color = guide_legend(ncol = 2)) + 
+  theme_classic() + 
+  scale_color_manual(values = c("#2b8cbe","#a6bddb","#e6550d","#fdae6b")) +
+  scale_y_continuous(labels = number_format(accuracy = 0.1),
+                     limits = c(-0.8,0.5),
+                     breaks = seq(-0.8,0.5, by = 0.4)) + 
+  labs(x = "NMDS1", y = "NMDS2", color = "Col_Age") +
+  theme(axis.line = element_line(size = 0.6, linetype = 1,
+                                 colour = "black"),
+        axis.title.y = element_text(vjust = 0.3), 
+        axis.ticks = element_line(size = 0.5, linetype = 1,
+                                  colour = "black"),
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 16, colour = "black"),
+        plot.title = element_text(hjust = 0.05, vjust = -1, size = 18),
+        legend.position = "bottom",
+        legend.text = element_text(size = 16),
+        legend.title = element_blank())
 ```
 
-```{r, results='hide', fig.show='hide', warning=FALSE, error=FALSE, comment="FALSE"}
+```{r error=FALSE, fig.show='hide', warning=FALSE, comment=FALSE, results='hide'}
 # Combine alpha and beta diversity plots
 (a1 + b1) / (a2 + b2) &
   plot_annotation(tag_levels = list(c("    A) Skin alpha diversity",
@@ -654,6 +705,9 @@ b2<-ggplot(nmds_scores_g, aes(x = NMDS1, y = NMDS2, color = factor(Colony_Age),
   theme(plot.tag = element_text(size=18), 
         plot.tag.position = c(0.39, 1.05),
         plot.margin = margin(t = 30, b = 10, l = 10, r = 10)) 
+
+ggsave("Figure_03_alpha_beta_diversity.png", path = output_dir,
+       width = 26, height = 22, units = "cm", dpi = 300)
 ```
 
 
