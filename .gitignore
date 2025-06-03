@@ -4,3 +4,13 @@ Non_tested_in_pilot_study.R
 scripts/*.html
 scripts/*.pdf
 .Rproj.user/
+scripts/Non_tested_in_pilot_study.R
+scripts/Sourcetracker.R
+out/asv_table_gut.tsv
+out/asv_table_skin.tsv
+out/meta_table_gut.tsv
+out/meta_table_skin.tsv
+out/mixing_proportions_gut.txt
+out/mixing_proportions_skin.txt
+out/Sourcetracking_Gut_Skin_Pilot.png
+out/*.pdf

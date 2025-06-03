@@ -1,6 +1,6 @@
 ---
 title:  "Supplementary Figures and Tables"
-subtitle: "*Manuscript title: Skin but not gut microbial communities in Antarctic fur seals vary with social density*"
+subtitle: "*Manuscript title: Skin, but not gut, microbial communities vary with social density in Antarctic fur seals*"
 author: "Petroula Botsidou"
 output: 
   html_document:
@@ -18,7 +18,7 @@ output:
 Rarefaction curves for skin (A) and gut (B) samples showing the number of observed ASVs in relation to the sequencing depth of every sample.
 <br>
 ```{r, echo = FALSE}
-setwd("C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts")
+setwd("C:/Fur_seals/Publications/AFS_skin_and_gut_microbiome/scripts")
 knitr::include_graphics("../out/Figure_S1_rarefaction_curves_skin_gut.png")
 ```
 <br><br>
@@ -28,7 +28,7 @@ knitr::include_graphics("../out/Figure_S1_rarefaction_curves_skin_gut.png")
 Distribution of Shannon diversity index for skin and gut samples presented with boxplots. 
 <br>
 ```{r, echo = FALSE}
-setwd("C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts")
+setwd("C:/Fur_seals/Publications/AFS_skin_and_gut_microbiome/scripts")
 knitr::include_graphics("../out/Figure_S2_shannon_distribution_boxplots.png")
 ```
 
@@ -39,7 +39,7 @@ knitr::include_graphics("../out/Figure_S2_shannon_distribution_boxplots.png")
 Shannon diversity index for skin samples including outlier (pup H11). 
 <br>
 ```{r, echo = FALSE}
-setwd("C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts")
+setwd("C:/Fur_seals/Publications/AFS_skin_and_gut_microbiome/scripts")
 knitr::include_graphics("../out/Figure_S3_alpha_diversity_skin_outlier.png")
 ```
 
@@ -60,7 +60,7 @@ library(kableExtra)
 
 meta<-read.csv("data/meta.csv", header = TRUE)
 
-samples_table<-meta %>% filter(Type_2!="Control") %>% select(c(3,4,6:8,10)) %>% 
+samples_table<-meta %>% filter(Type_2!="Control") %>% select(c(3,4,6:8,10,15:18)) %>% 
   rename(Sample_ID = BAS_ID, Body_site = Type_1) %>% arrange(Sample_ID)
 
 controls_table<-meta %>% filter(Type_2 == "Control") %>% 
@@ -173,7 +173,7 @@ Output of the linear mixed effect models.
 # S.Table7: LMM - Alpha diversity
 model1_2_out<-readRDS("data/model1_2_out.rds")
 
-model1_2_out %>% kbl() %>% kable_classic(full_width = F) %>% 
+model1_2_out %>% kbl() %>% kable_classic(full_width = F, html_font = "Cambria") %>% 
   pack_rows("Skin", 1,3) %>% 
   pack_rows("Gut",4,6)
 ```
@@ -187,7 +187,7 @@ Output of the linear models.
 ```{r, echo = FALSE}
 model3_4_out<-readRDS("data/model3_4_out.rds")
 
-model3_4_out %>%  kbl() %>% kable_classic(full_width = F) %>% 
+model3_4_out %>%  kbl() %>% kable_classic(full_width = F, html_font = "Cambria") %>% 
   pack_rows("Skin-pups", 1, 3) %>% 
   pack_rows("Gut-pups", 4, 6)
 ```
@@ -211,7 +211,7 @@ perm1 %>%
   mutate(across(everything(), ~ ifelse(is.na(.), "-", .))) %>% 
   mutate(across(everything(), ~ gsub("-", "\\-", ., fixed = TRUE))) %>% 
   kbl() %>% 
-  kable_classic(full_width = F) %>% 
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
   add_header_above(c(" " = 1, "Permanova" = 5, "betadisper" = 2)) %>% 
   pack_rows("Skin", 1, 5) %>% 
   pack_rows("Gut", 6, 10) %>% 

@@ -1,6 +1,0 @@
-"0","# Combine alpha and beta diversity plots"
-"0","(a1 + b1) / (a2 + b2) &"
-"0","  plot_annotation(tag_levels = list(c(""    A) Skin alpha diversity"", "" B) Skin beta diversity"", ""  C) Gut alpha diversity"", ""D) Gut beta diversity""))) &"
-"0","  theme(plot.tag = element_text(size=18), "
-"0","        plot.tag.position = c(0.39, 1.05),"
-"0","        plot.margin = margin(t = 30, b = 10, l = 10, r = 10)) "

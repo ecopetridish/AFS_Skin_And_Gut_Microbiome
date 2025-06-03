@@ -190,6 +190,9 @@ da4<-da4 + coord_cartesian(ylim=c(1,6), xlim=c(-8, 7.5)) +
         plot.tag.position = c(0.6, 1.03),
         plot.margin = margin(t = 30, b = 10, l = 10, r = 10)) 
 
+ggsave("Figure_04_differential_abundance_001.pdf", path = output_dir,
+       width = 40, height = 30, units = "cm", dpi = 300, device = cairo_pdf)
+
 ggsave("Figure_04_differential_abundance_001.png", path = output_dir,
        width = 40, height = 30, units = "cm", dpi = 300)
 ```

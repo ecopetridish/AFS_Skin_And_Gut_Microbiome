@@ -624,6 +624,7 @@ diversity_df %>%
 ggsave("Figure_S3_alpha_diversity_skin_outlier.png", path = output_dir,
        width = 27, height = 22, units = "cm", dpi = 300)
 ```
+
 ```{r, echo = FALSE}
 setwd("C:/Fur seals/Publications/Botsidou et al 2025_Skin and gut AFS/scripts")
 knitr::include_graphics("../out/Figure_S3_alpha_diversity_skin_outlier.png")
@@ -705,6 +706,9 @@ b2<-ggplot(nmds_scores_g, aes(x = NMDS1, y = NMDS2, color = factor(Colony_Age),
   theme(plot.tag = element_text(size=18), 
         plot.tag.position = c(0.39, 1.05),
         plot.margin = margin(t = 30, b = 10, l = 10, r = 10)) 
+
+ggsave("Figure_03_alpha_beta_diversity.pdf", path = output_dir,
+       width = 26, height = 22, units = "cm", dpi = 300, device = cairo_pdf)
 
 ggsave("Figure_03_alpha_beta_diversity.png", path = output_dir,
        width = 26, height = 22, units = "cm", dpi = 300)
